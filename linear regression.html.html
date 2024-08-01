@@ -1,0 +1,241 @@
+<html><head><base href="https://websim.ai/linear-regression-simulator/"></head><body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear Regression Simulator - Foodpanda Style</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/regression/2.0.1/regression.min.js"></script>
+    <style>
+        :root {
+            --foodpanda-pink: #D70F64;
+            --foodpanda-light-pink: #FAE6EF;
+            --foodpanda-dark-gray: #333333;
+            --foodpanda-light-gray: #F7F7F7;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--foodpanda-light-gray);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            color: var(--foodpanda-dark-gray);
+        }
+        h1 {
+            color: var(--foodpanda-pink);
+            text-align: center;
+            width: 100%;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+        }
+        .sidebar {
+            width: 250px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(215, 15, 100, 0.1);
+            margin-right: 20px;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .slider-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--foodpanda-pink);
+        }
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: var(--foodpanda-light-pink);
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            border-radius: 5px;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--foodpanda-pink);
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: var(--foodpanda-pink);
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        #chartContainer {
+            flex: 1;
+            background-color: white;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(215, 15, 100, 0.1);
+            margin-bottom: 20px;
+        }
+        #metrics {
+            background-color: white;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(215, 15, 100, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Linear Regression Simulator</h1>
+    <div class="container">
+        <div class="sidebar">
+            <div class="slider-group">
+                <label for="slopeSlider">Slope (a): <span id="slopeValue">1</span></label>
+                <input type="range" id="slopeSlider" min="-50" max="50" value="1" step="0.1">
+            </div>
+            <div class="slider-group">
+                <label for="pointsSlider">Number of points (n): <span id="pointsValue">500</span></label>
+                <input type="range" id="pointsSlider" min="100" max="1000" value="500" step="10">
+            </div>
+            <div class="slider-group">
+                <label for="noiseSlider">Noise factor (c): <span id="noiseValue">20</span></label>
+                <input type="range" id="noiseSlider" min="10" max="100" value="20" step="1">
+            </div>
+        </div>
+        <div class="main-content">
+            <div id="chartContainer">
+                <canvas id="regressionChart"></canvas>
+            </div>
+            <div id="metrics"></div>
+        </div>
+    </div>
+
+    <script>
+        let chart;
+        const ctx = document.getElementById('regressionChart').getContext('2d');
+
+        function generateData(slope, n, noiseFactor) {
+            const x = Array.from({length: n}, () => Math.random() * 9 + 1);
+            const intercept = Math.random() * 20 - 10;
+            const y = x.map(xi => slope * xi + intercept + noiseFactor * (Math.random() * 2 - 1));
+            return {x, y, intercept};
+        }
+
+        function updateChart() {
+            const slope = parseFloat(document.getElementById('slopeSlider').value);
+            const n = parseInt(document.getElementById('pointsSlider').value);
+            const noiseFactor = parseFloat(document.getElementById('noiseSlider').value);
+
+            const {x, y, intercept} = generateData(slope, n, noiseFactor);
+            const data = x.map((xi, i) => [xi, y[i]]);
+
+            const result = regression.linear(data);
+            const linearRegression = x.map(xi => result.predict(xi)[1]);
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Data Points',
+                        data: data.map(([x, y]) => ({x, y})),
+                        backgroundColor: 'rgba(215, 15, 100, 0.5)'
+                    }, {
+                        label: 'Linear Regression',
+                        data: x.map((xi, i) => ({x: xi, y: linearRegression[i]})),
+                        type: 'line',
+                        borderColor: '#D70F64',
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'X',
+                                color: '#D70F64'
+                            },
+                            ticks: {
+                                color: '#333333'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Y',
+                                color: '#D70F64'
+                            },
+                            ticks: {
+                                color: '#333333'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#333333'
+                            }
+                        }
+                    }
+                }
+            });
+
+            const mse = data.reduce((sum, [xi, yi], i) => sum + Math.pow(yi - linearRegression[i], 2), 0) / n;
+            const meanY = y.reduce((sum, yi) => sum + yi, 0) / n;
+            const ssTotal = y.reduce((sum, yi) => sum + Math.pow(yi - meanY, 2), 0);
+            const ssResidual = data.reduce((sum, [xi, yi], i) => sum + Math.pow(yi - linearRegression[i], 2), 0);
+            const r2 = 1 - (ssResidual / ssTotal);
+
+            document.getElementById('metrics').innerHTML = `
+                <p>Mean Squared Error: ${mse.toFixed(2)}</p>
+                <p>R-squared Score: ${r2.toFixed(2)}</p>
+                <p>Estimated Slope: ${result.equation[0].toFixed(2)}</p>
+                <p>Estimated Intercept: ${result.equation[1].toFixed(2)}</p>
+                <p>True Slope: ${slope.toFixed(2)}</p>
+                <p>True Intercept: ${intercept.toFixed(2)}</p>
+            `;
+        }
+
+        updateChart();
+
+        document.getElementById('slopeSlider').addEventListener('input', function() {
+            document.getElementById('slopeValue').textContent = this.value;
+            updateChart();
+        });
+
+        document.getElementById('pointsSlider').addEventListener('input', function() {
+            document.getElementById('pointsValue').textContent = this.value;
+            updateChart();
+        });
+
+        document.getElementById('noiseSlider').addEventListener('input', function() {
+            document.getElementById('noiseValue').textContent = this.value;
+            updateChart();
+        });
+    </script>
+</body>
+</html>
+</body></html>
